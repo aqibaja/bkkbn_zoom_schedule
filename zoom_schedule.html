@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="id">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+<head>
+    <meta charset="UTF-8">
+    <title>Jadwal Zoom Meeting</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #2d3748;
+            min-height: 100vh;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a6fa5;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            align-items: flex-end
+        }
+
+        .filter-container label {
+            margin-right: 15px;
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+        }
+
+        input[type="date"],
+        input[type="text"],
+        button {
+            padding: 12px 15px;
+            margin: 5px 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="date"]:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4a6fa5;
+            box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.2);
+        }
+
+        button {
+            background-color: #4a6fa5;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            border: none;
+            height: 44px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        button:hover {
+            background-color: #3a5a80;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 30px;
+            background: #fff;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #4a6fa5;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: col-resize;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .resizer:hover,
+        .resizer.resizing {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .sort-icon {
+            font-size: 0.8em;
+            margin-left: 5px;
+            opacity: 0.7;
+        }
+
+        th:hover {
+            background: #3a5a80;
+        }
+
+        tr:hover {
+            background-color: #f8fafc;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f7fafc;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>
+            <span class="icon">📅</span>
+            Jadwal Zoom Meeting
+        </h1>
+    </header>
+
+    <div class="filter-container">
+        <div class="button-group">
+            <label>Dari Tanggal:
+                <input type="date" id="startDate">
+            </label>
+            <label>Sampai Tanggal:
+                <input type="date" id="endDate">
+            </label>
+            <label>Cari:
+                <input type="text" id="searchInput" placeholder="Nama PIC atau Topik">
+            </label>
+            <button onclick="resetFilter()">Reset</button>
+        </div>
+        <div class="button-group">
+            <button onclick="resetRequest()">Request</button>
+            <button onclick="refreshPage()" title="Refresh">
+                <i class="fas fa-rotate-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <table id="jadwalTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">Tanggal <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(1)">Jam <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(2)">Nama PIC <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(3)">Topik <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(4)">Durasi Sampai <span class="sort-icon">↕</span></th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        const SHEET_URL = 'https://opensheet.elk.sh/1xU4oru5rlci4NJtirs9JcwfiLZ0w89EqIvwpo79HkeE/Form%20Responses%201';
+        let allData = [];
+
+        function normalizeDateTime(rawInput) {
+            const parts = rawInput.split(' ');
+            const [month, day, year] = parts[0].split('/');
+            let time = parts[1]?.substring(0, 5) || '00:00'; // Ambil HH:MM
+            if (time.endsWith(':')) {
+                time = time.slice(0, -1); // hapus karakter terakhir
+            }
+            const tanggal = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            return { date: tanggal, time: time };
+        }
+
+        async function loadData() {
+            const res = await fetch(SHEET_URL);
+            const data = await res.json();
+
+            allData = data
+                .filter(row => row["Jadwal Zoom"] && row["Nama PIC"])
+                .map(row => {
+                    const dt = normalizeDateTime(row["Jadwal Zoom"]);
+                    return {
+                        tanggal: dt.date,
+                        jam: dt.time,
+                        nama: row["Nama PIC"].trim(),
+                        topik: row["Topik/Judul Kegiatan"] || '',
+                        durasi: row["Durasi Zoom (Sampai Jam Berapa)"] || ''
+                    };
+                });
+
+            renderTable(allData);
+        }
+
+        function renderTable(data) {
+            const tbody = document.querySelector('#jadwalTable tbody');
+            tbody.innerHTML = '';
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+          <td>${row.tanggal}</td>
+          <td>${row.jam}</td>
+          <td>${row.nama}</td>
+          <td>${row.topik}</td>
+          <td>${row.durasi}</td>
+        `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterData() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+
+            const filtered = allData.filter(row => {
+                const matchDateRange = (!startDate || row.tanggal >= startDate) &&
+                    (!endDate || row.tanggal <= endDate);
+                const matchSearch = !searchVal ||
+                    row.nama.toLowerCase().includes(searchVal) ||
+                    row.topik.toLowerCase().includes(searchVal);
+                return matchDateRange && matchSearch;
+            });
+
+            renderTable(filtered);
+        }
+
+        function resetFilter() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('searchInput').value = '';
+            renderTable(allData);
+        }
+
+        function resetRequest() {
+            const url = "https://docs.google.com/forms/d/e/1FAIpQLSc46r2nIZRhu4GPZFACW-f_QQ-wzDDLF1G58UkWF8QRHkamkw/viewform";
+            window.open(url, "_blank");
+        }
+
+        function refreshPage() {
+            location.reload();
+        }
+
+        function sortTable(columnIndex) {
+            const tbody = document.querySelector('#jadwalTable tbody');
+            const rows = Array.from(tbody.rows);
+            const isAscending = tbody.dataset.sortOrder === 'asc';
+
+            rows.sort((a, b) => {
+                const aText = a.cells[columnIndex].textContent;
+                const bText = b.cells[columnIndex].textContent;
+
+                return isAscending ? aText.localeCompare(bText) : bText.localeCompare(aText);
+            });
+
+            tbody.dataset.sortOrder = isAscending ? 'desc' : 'asc';
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        document.getElementById('startDate').addEventListener('input', filterData);
+        document.getElementById('endDate').addEventListener('input', filterData);
+        document.getElementById('searchInput').addEventListener('input', filterData);
+
+        function setupResizableColumns() {
+            const headers = document.querySelectorAll('th');
+            headers.forEach(header => {
+                const resizer = document.createElement('div');
+                resizer.classList.add('resizer');
+                header.appendChild(resizer);
+
+                let x = 0;
+                let w = 0;
+
+                const mouseDownHandler = function (e) {
+                    x = e.clientX;
+                    w = header.offsetWidth;
+                    resizer.classList.add('resizing');
+
+                    document.addEventListener('mousemove', mouseMoveHandler);
+                    document.addEventListener('mouseup', mouseUpHandler);
+                };
+
+                const mouseMoveHandler = function (e) {
+                    const dx = e.clientX - x;
+                    header.style.width = `${w + dx}px`;
+                };
+
+                const mouseUpHandler = function () {
+                    resizer.classList.remove('resizing');
+                    document.removeEventListener('mousemove', mouseMoveHandler);
+                    document.removeEventListener('mouseup', mouseUpHandler);
+                };
+
+                resizer.addEventListener('mousedown', mouseDownHandler);
+            });
+        }
+
+        loadData();
+        setupResizableColumns();
+    </script>
+</body>
+
+</html>
