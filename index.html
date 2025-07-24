@@ -222,15 +222,15 @@
                 <input type="date" id="endDate">
             </label>
             <label>Cari:
-                <input type="text" id="searchInput" placeholder="Nama PIC atau Topik">
+                <input type="text" id="searchInput" placeholder="Cari Tim Kerja atau PIC">
             </label>
             <button onclick="resetFilter()">Reset</button>
         </div>
         <div class="button-group">
-            <button onclick="resetRequest()">Request</button>
-            <button onclick="refreshPage()" title="Refresh">
+            <button onclick="resetRequest()">Request Link Zoom</button>
+            <!-- <button onclick="refreshPage()" title="Refresh">
                 <i class="fas fa-rotate-right"></i>
-            </button>
+            </button> -->
         </div>
     </div>
 
@@ -241,11 +241,13 @@
     <table id="jadwalTable">
         <thead>
             <tr>
-                <th onclick="sortTable(0)">Tanggal <span class="sort-icon">↕</span></th>
-                <th onclick="sortTable(1)">Jam <span class="sort-icon">↕</span></th>
-                <th onclick="sortTable(2)">Nama PIC <span class="sort-icon">↕</span></th>
-                <th onclick="sortTable(3)">Topik <span class="sort-icon">↕</span></th>
-                <th onclick="sortTable(4)">Durasi Sampai <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(0)">Tanggal<span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(1)">Nama PIC<span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(2)">Tim Kerja<span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(3)">Jam<span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(4)">Durasi Sampai<span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(5)">Topik<span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(6)">Peserta<span class="sort-icon">↕</span></th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -279,10 +281,12 @@
                         const dt = normalizeDateTime(row["Jadwal Zoom"]);
                         return {
                             tanggal: dt.date,
-                            jam: dt.time,
                             nama: row["Nama PIC"].trim(),
+                            tim: row["Tim Kerja"].trim(),
+                            jam: dt.time,
+                            durasi: row["Durasi Zoom (Sampai Jam Berapa)"] || '',
                             topik: row["Topik/Judul Kegiatan"] || '',
-                            durasi: row["Durasi Zoom (Sampai Jam Berapa)"] || ''
+                            peserta: row["Peserta Zoom"] || '',
                         };
                     });
 
@@ -301,10 +305,12 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
           <td>${row.tanggal}</td>
-          <td>${row.jam}</td>
           <td>${row.nama}</td>
-          <td>${row.topik}</td>
+          <td>${row.tim}</td>
+          <td>${row.jam}</td>
           <td>${row.durasi}</td>
+          <td>${row.topik}</td>
+          <td>${row.peserta}</td>
         `;
                 tbody.appendChild(tr);
             });
@@ -320,7 +326,7 @@
                     (!endDate || row.tanggal <= endDate);
                 const matchSearch = !searchVal ||
                     row.nama.toLowerCase().includes(searchVal) ||
-                    row.topik.toLowerCase().includes(searchVal);
+                    row.tim.toLowerCase().includes(searchVal);
                 return matchDateRange && matchSearch;
             });
 
