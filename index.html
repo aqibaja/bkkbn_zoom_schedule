@@ -242,10 +242,10 @@
         <thead>
             <tr>
                 <th onclick="sortTable(0)">Tanggal<span class="sort-icon">↕</span></th>
-                <th onclick="sortTable(1)">Nama PIC<span class="sort-icon">↕</span></th>
-                <th onclick="sortTable(2)">Tim Kerja<span class="sort-icon">↕</span></th>
                 <th onclick="sortTable(3)">Jam<span class="sort-icon">↕</span></th>
                 <th onclick="sortTable(4)">Durasi Sampai<span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(1)">Nama PIC<span class="sort-icon">↕</span></th>
+                <th onclick="sortTable(2)">Tim Kerja<span class="sort-icon">↕</span></th>
                 <th onclick="sortTable(5)">Topik<span class="sort-icon">↕</span></th>
                 <th onclick="sortTable(6)">Peserta<span class="sort-icon">↕</span></th>
             </tr>
@@ -268,6 +268,18 @@
             return { date: tanggal, time: time };
         }
 
+        function normalizeTimeOnly(timeStr) {
+            if (!timeStr) return '';
+
+            // Pakai parsing manual agar AM/PM didukung
+            const date = new Date(`1970-01-01 ${timeStr}`);
+            if (isNaN(date)) return ''; // hindari NaN
+
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
         async function loadData() {
             document.getElementById('loading').style.display = 'flex';
             try {
@@ -281,10 +293,10 @@
                         const dt = normalizeDateTime(row["Jadwal Zoom"]);
                         return {
                             tanggal: dt.date,
+                            jam: dt.time,
+                            durasi: normalizeTimeOnly(row["Durasi Zoom (Sampai Jam Berapa)"]),
                             nama: row["Nama PIC"].trim(),
                             tim: row["Tim Kerja"].trim(),
-                            jam: dt.time,
-                            durasi: row["Durasi Zoom (Sampai Jam Berapa)"] || '',
                             topik: row["Topik/Judul Kegiatan"] || '',
                             peserta: row["Peserta Zoom"] || '',
                         };
@@ -305,10 +317,10 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
           <td>${row.tanggal}</td>
-          <td>${row.nama}</td>
-          <td>${row.tim}</td>
           <td>${row.jam}</td>
           <td>${row.durasi}</td>
+          <td>${row.nama}</td>
+          <td>${row.tim}</td>
           <td>${row.topik}</td>
           <td>${row.peserta}</td>
         `;
